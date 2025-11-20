@@ -1,0 +1,16 @@
+services:
+  ### APP ##############################################
+  ui:
+    container_name: ui
+    image: ui
+    build: .
+    ports:
+      - 3000:3000
+    env_file:
+      - .env
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20M"
+        max-file: "10"
