@@ -272,7 +272,7 @@ const Merchant = () => {
       );
 
       const chartResponse = await api.get<
-        IApiResponse<{ date: string; aov: number }[]>
+        IApiResponse<{ date: string; averageOrderValue: number }[]>
       >(
         `/merchant/${id}/aov/chart?startDate=${encodeURIComponent(
           "2025-11-01T00:00:00.000Z"
@@ -287,7 +287,7 @@ const Merchant = () => {
             day: "numeric",
           })
         ),
-        data: chartResponse.data.data.map((item) => item.aov),
+        data: chartResponse.data.data.map((item) => item.averageOrderValue),
       });
     };
 
