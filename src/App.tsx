@@ -67,7 +67,7 @@ function App() {
         <Route
           path="/"
           element={
-            <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="login">
+            <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="/login">
               <Layout>
                 <Home />
               </Layout>
@@ -77,7 +77,7 @@ function App() {
         <Route
           path="merchants/:id"
           element={
-            <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="login">
+            <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="/login">
               <Layout>
                 <Merchant />
               </Layout>
