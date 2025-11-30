@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { IApiResponse } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import api from "@/lib/api";
 import useAuth from "@/store/auth";
 import { useState } from "react";
@@ -22,6 +23,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -30,12 +33,17 @@ const Login = () => {
     try {
       const response = await api.post<
         IApiResponse<{ accessToken: string; refreshToken: string }>
-      >("/auth/login", { username, password }, { headers: { _retry: true } });
+      >(
+        `/${isAdmin ? "admin" : "auth"}/login`,
+        { username, password },
+        { headers: { _retry: true } }
+      );
 
       localStorage.setItem("access_token", response.data.data.accessToken);
       localStorage.setItem("refresh_token", response.data.data.refreshToken);
+      localStorage.setItem("is_admin", isAdmin ? "true" : "false");
 
-      setLoggedIn(true);
+      setLoggedIn(true, isAdmin);
     } catch (error) {
       console.log("Login error", error);
       setError("Login failed. Please check your credentials and try again.");
@@ -80,6 +88,19 @@ const Login = () => {
                 disabled={isLoading}
               />
             </div>
+
+            <div className="flex items-center justify-center space-y-2">
+              <Switch
+                id="isAdmin"
+                checked={isAdmin}
+                onCheckedChange={setIsAdmin}
+                className="mb-0"
+              />
+              <Label htmlFor="isAdmin" className="ml-3">
+                Login as Admin
+              </Label>
+            </div>
+
             <Button
               type="submit"
               className="w-full cursor-pointer"

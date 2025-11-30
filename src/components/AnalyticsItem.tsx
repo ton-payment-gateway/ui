@@ -1,36 +1,37 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import {
-  CategoryScale,
-  Chart as ChartJS,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  Title,
-  Tooltip,
-} from "chart.js";
 
 import { Line } from "react-chartjs-2";
 import { useState } from "react";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
 
 interface Props {
   kpi: number;
   labels: string[];
   data: number[];
+  forecastLabels?: string[];
+  forecastData?: number[];
 }
 
-const AnalyticsItem = ({ kpi, labels, data }: Props) => {
+const AnalyticsItem = ({
+  kpi,
+  labels,
+  data,
+  forecastLabels,
+  forecastData,
+}: Props) => {
   const [isFlipped, setIsFlipped] = useState(false);
+
+  const hasForecast =
+    forecastData &&
+    forecastLabels &&
+    forecastData.length > 0 &&
+    forecastData.length === forecastLabels.length;
+
+  const allLabels = [...labels, ...(hasForecast ? forecastLabels : [])];
+
+  const paddingLength = Math.max(0, labels.length - 1);
+  const forecastSeries = hasForecast
+    ? [...Array(paddingLength).fill(null), ...forecastData]
+    : [];
 
   return (
     <div className="flip-card">
@@ -63,15 +64,27 @@ const AnalyticsItem = ({ kpi, labels, data }: Props) => {
             <CardContent>
               <Line
                 data={{
-                  labels: labels,
+                  labels: allLabels,
                   datasets: [
                     {
                       label: "Value",
-                      data: data,
+                      data,
                       borderColor: "hsl(var(--primary))",
                       backgroundColor: "hsla(var(--primary), 0.1)",
                       tension: 0.4,
                     },
+                    ...(hasForecast
+                      ? [
+                          {
+                            label: "Forecast",
+                            data: forecastSeries,
+                            borderColor: "rgba(100, 100, 100, 0.8)",
+                            borderDash: [6, 6] as number[],
+                            pointRadius: 0,
+                            tension: 0.4,
+                          },
+                        ]
+                      : []),
                   ],
                 }}
                 options={{

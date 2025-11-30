@@ -1,37 +1,3 @@
-import { Check, Copy } from "lucide-react";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import type { IApiResponse, IMerchant } from "@/lib/types";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-
-import AnalyticsItem from "@/components/AnalyticsItem";
-import { Button } from "@/components/ui/button";
-import { type IFunnelDataPoint, FunnelChart } from "@/components/FunnelChart";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import NotFound from "@/components/NotFound";
-import api from "@/lib/api";
-import { toast } from "sonner";
-import { Heatmap, type IHeatmapDataPoint } from "@/components/Heatmap";
-import {
-  TransactionsTable,
-  type ITransaction,
-} from "@/components/TransactionsTable";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -41,6 +7,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useEffect, useState } from "react";
+
+import AnalyticsItem from "@/components/AnalyticsItem";
+import type { IApiResponse } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  TransactionsTable,
+  type ITransaction,
+} from "@/components/TransactionsTable";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 const EForecastModel = {
   HoltWinters: "holt_winters",
@@ -56,18 +35,8 @@ const MODELS_OPTIONS = [
   { value: EForecastModel.Prophet, label: "Prophet" },
 ];
 
-const Merchant = () => {
-  const { id } = useParams<{ id: string }>();
-
-  const navigate = useNavigate();
-
-  const [merchant, setMerchant] = useState<IMerchant | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
-  const [copiedWebhook, setCopiedWebhook] = useState(false);
-  const [withdrawAddress, setWithdrawAddress] = useState("");
-  const [merchantName, setMerchantName] = useState("");
-  const [merchantWebhook, setMerchantWebhook] = useState("");
+const Dashboard = () => {
+  const [alerts, setAlerts] = useState<string[]>([]);
 
   const [startDate, setStartDate] = useState(
     new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -117,31 +86,18 @@ const Merchant = () => {
     forecastLabels?: string[];
     forecastData?: number[];
   } | null>(null);
-  const [aovData, setAovData] = useState<{
+  const [activeMerchantsData, setActiveMerchantsData] = useState<{
     kpi: number;
     labels: string[];
     data: number[];
     forecastLabels?: string[];
     forecastData?: number[];
   } | null>(null);
-  const [repeatCustomerRateData, setRepeatCustomerRateData] = useState<{
-    kpi: number;
-    labels: string[];
-    data: number[];
-    forecastLabels?: string[];
-    forecastData?: number[];
-  } | null>(null);
-
-  const [funnelData, setFunnelData] = useState<IFunnelDataPoint | null>(null);
-
-  const [heatmapData, setHeatmapData] = useState<IHeatmapDataPoint[]>([]);
 
   const [slowestTransactionsAmount, setSlowestTransactionsAmount] = useState(5);
   const [slowestTransactions, setSlowestTransactions] = useState<
     ITransaction[]
   >([]);
-
-  const [alerts, setAlerts] = useState<string[]>([]);
 
   const [forecastEnabled, setForecastEnabled] = useState(false);
   const [predictionModel, setPredictionModel] = useState<EForecastModel>(
@@ -150,32 +106,19 @@ const Merchant = () => {
   const [forecastHorizon, setForecastHorizon] = useState(7);
 
   useEffect(() => {
-    const fetchMerchant = async () => {
-      setIsLoading(true);
-      try {
-        const response = await api.get<IApiResponse<IMerchant>>(
-          `/merchant/${id}`
-        );
-        setMerchant(response.data.data);
-      } finally {
-        setIsLoading(false);
-      }
+    const fetchAlerts = async () => {
+      const response = await api.get<IApiResponse<string[]>>(`/admin/alerts`);
+
+      setAlerts(response.data.data);
     };
 
-    fetchMerchant();
-  }, [id]);
-
-  useEffect(() => {
-    if (merchant) {
-      setMerchantName(merchant.name);
-      setMerchantWebhook(merchant.webhookUrl || "");
-    }
-  }, [merchant]);
+    fetchAlerts();
+  }, []);
 
   useEffect(() => {
     const fetchGmvData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/gmv?startDate=${encodeURIComponent(
+        `/admin/gmv?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -183,7 +126,7 @@ const Merchant = () => {
       const chartResponse = await api.get<
         IApiResponse<{ date: string; gmv: number }[]>
       >(
-        `/merchant/${id}/gmv/chart?startDate=${encodeURIComponent(
+        `/admin/gmv/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -210,7 +153,7 @@ const Merchant = () => {
           const forecastResponse = await api.get<
             IApiResponse<{ date: string; gmv: number }[]>
           >(
-            `/merchant/${id}/gmv/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/gmv/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -232,19 +175,12 @@ const Merchant = () => {
     };
 
     fetchGmvData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
     const fetchServiceFeeData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/service-fee?startDate=${encodeURIComponent(
+        `/admin/service-fee?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -252,7 +188,7 @@ const Merchant = () => {
       const chartResponse = await api.get<
         IApiResponse<{ date: string; serviceFee: number }[]>
       >(
-        `/merchant/${id}/service-fee/chart?startDate=${encodeURIComponent(
+        `/admin/service-fee/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -279,7 +215,7 @@ const Merchant = () => {
           const forecastResponse = await api.get<
             IApiResponse<{ date: string; serviceFee: number }[]>
           >(
-            `/merchant/${id}/service-fee/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/service-fee/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -301,19 +237,12 @@ const Merchant = () => {
     };
 
     fetchServiceFeeData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
     const fetchCrData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/cr?startDate=${encodeURIComponent(
+        `/admin/cr?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -321,7 +250,7 @@ const Merchant = () => {
       const chartResponse = await api.get<
         IApiResponse<{ date: string; conversionRate: number }[]>
       >(
-        `/merchant/${id}/cr/chart?startDate=${encodeURIComponent(
+        `/admin/cr/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -348,7 +277,7 @@ const Merchant = () => {
           const forecastResponse = await api.get<
             IApiResponse<{ date: string; conversionRate: number }[]>
           >(
-            `/merchant/${id}/cr/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/cr/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -370,19 +299,12 @@ const Merchant = () => {
     };
 
     fetchCrData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
     const fetchAverageConfirmationTimeData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/average-confirmation-time?startDate=${encodeURIComponent(
+        `/admin/average-confirmation-time?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -390,7 +312,7 @@ const Merchant = () => {
       const chartResponse = await api.get<
         IApiResponse<{ date: string; averageConfirmationTime: number }[]>
       >(
-        `/merchant/${id}/average-confirmation-time/chart?startDate=${encodeURIComponent(
+        `/admin/average-confirmation-time/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -419,7 +341,7 @@ const Merchant = () => {
           const forecastResponse = await api.get<
             IApiResponse<{ date: string; averageConfirmationTime: number }[]>
           >(
-            `/merchant/${id}/average-confirmation-time/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/average-confirmation-time/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -443,19 +365,12 @@ const Merchant = () => {
     };
 
     fetchAverageConfirmationTimeData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
     const fetchP95ConfirmationTimeData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/p95-confirmation-time?startDate=${encodeURIComponent(
+        `/admin/p95-confirmation-time?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -463,7 +378,7 @@ const Merchant = () => {
       const chartResponse = await api.get<
         IApiResponse<{ date: string; p95ConfirmationTime: number }[]>
       >(
-        `/merchant/${id}/p95-confirmation-time/chart?startDate=${encodeURIComponent(
+        `/admin/p95-confirmation-time/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -490,7 +405,7 @@ const Merchant = () => {
           const forecastResponse = await api.get<
             IApiResponse<{ date: string; p95ConfirmationTime: number }[]>
           >(
-            `/merchant/${id}/p95-confirmation-time/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/p95-confirmation-time/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -512,19 +427,12 @@ const Merchant = () => {
     };
 
     fetchP95ConfirmationTimeData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
     const fetchDirectDepositShareData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/direct-deposit-share?startDate=${encodeURIComponent(
+        `/admin/direct-deposit-share?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -532,7 +440,7 @@ const Merchant = () => {
       const chartResponse = await api.get<
         IApiResponse<{ date: string; directDepositShare: number }[]>
       >(
-        `/merchant/${id}/direct-deposit-share/chart?startDate=${encodeURIComponent(
+        `/admin/direct-deposit-share/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -559,7 +467,7 @@ const Merchant = () => {
           const forecastResponse = await api.get<
             IApiResponse<{ date: string; directDepositShare: number }[]>
           >(
-            `/merchant/${id}/direct-deposit-share/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/direct-deposit-share/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -581,27 +489,20 @@ const Merchant = () => {
     };
 
     fetchDirectDepositShareData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
-    const fetchAovData = async () => {
+    const fetchActiveMerchantsData = async () => {
       const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/aov?startDate=${encodeURIComponent(
+        `/admin/active-merchants?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
 
       const chartResponse = await api.get<
-        IApiResponse<{ date: string; averageOrderValue: number }[]>
+        IApiResponse<{ date: string; activeMerchants: number }[]>
       >(
-        `/merchant/${id}/aov/chart?startDate=${encodeURIComponent(
+        `/admin/active-merchants/chart?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(endDate)}`
       );
@@ -620,15 +521,15 @@ const Merchant = () => {
             day: "numeric",
           })
         ),
-        data: chartResponse.data.data.map((item) => item.averageOrderValue),
+        data: chartResponse.data.data.map((item) => item.activeMerchants),
       };
 
       if (forecastEnabled) {
         try {
           const forecastResponse = await api.get<
-            IApiResponse<{ date: string; averageOrderValue: number }[]>
+            IApiResponse<{ date: string; activeMerchants: number }[]>
           >(
-            `/merchant/${id}/aov/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
+            `/admin/active-merchants/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
           );
 
           result.forecastLabels = forecastResponse.data.data.map((item) =>
@@ -638,134 +539,24 @@ const Merchant = () => {
             })
           );
           result.forecastData = forecastResponse.data.data.map(
-            (item) => item.averageOrderValue
+            (item) => item.activeMerchants
           );
         } catch (error) {
           console.log(error);
-          toast.error("Failed to fetch average order value forecast data");
+          toast.error("Failed to fetch active merchants forecast data");
         }
       }
 
-      setAovData(result);
+      setActiveMerchantsData(result);
     };
 
-    fetchAovData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
-
-  useEffect(() => {
-    const fetchRepeatCustomerRateData = async () => {
-      const kpiResponse = await api.get<IApiResponse<number>>(
-        `/merchant/${id}/repeat-customer-rate?startDate=${encodeURIComponent(
-          startDate
-        )}&endDate=${encodeURIComponent(endDate)}`
-      );
-
-      const chartResponse = await api.get<
-        IApiResponse<{ date: string; repeatCustomerRate: number }[]>
-      >(
-        `/merchant/${id}/repeat-customer-rate/chart?startDate=${encodeURIComponent(
-          startDate
-        )}&endDate=${encodeURIComponent(endDate)}`
-      );
-
-      const result: {
-        kpi: number;
-        labels: string[];
-        data: number[];
-        forecastLabels?: string[];
-        forecastData?: number[];
-      } = {
-        kpi: kpiResponse.data.data,
-        labels: chartResponse.data.data
-          .filter((item) => item.repeatCustomerRate > 0)
-          .map((item) =>
-            new Date(item.date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })
-          ),
-        data: chartResponse.data.data
-          .filter((item) => item.repeatCustomerRate > 0)
-          .map((item) => item.repeatCustomerRate),
-      };
-
-      if (forecastEnabled) {
-        try {
-          const forecastResponse = await api.get<
-            IApiResponse<{ date: string; repeatCustomerRate: number }[]>
-          >(
-            `/merchant/${id}/repeat-customer-rate/forecast?model=${predictionModel}&horizon=${forecastHorizon}`
-          );
-
-          result.forecastLabels = forecastResponse.data.data.map((item) =>
-            new Date(item.date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })
-          );
-          result.forecastData = forecastResponse.data.data.map(
-            (item) => item.repeatCustomerRate
-          );
-        } catch (error) {
-          console.log(error);
-          toast.error("Failed to fetch repeat customer rate forecast data");
-        }
-      }
-
-      setRepeatCustomerRateData(result);
-    };
-
-    fetchRepeatCustomerRateData();
-  }, [
-    id,
-    startDate,
-    endDate,
-    forecastEnabled,
-    predictionModel,
-    forecastHorizon,
-  ]);
-
-  useEffect(() => {
-    const fetchFunnelData = async () => {
-      const response = await api.get<IApiResponse<IFunnelDataPoint>>(
-        `/merchant/${id}/funnel?startDate=${encodeURIComponent(
-          startDate
-        )}&endDate=${encodeURIComponent(endDate)}`
-      );
-
-      const data = response.data.data;
-
-      setFunnelData(data);
-    };
-
-    fetchFunnelData();
-  }, [id, startDate, endDate]);
-
-  useEffect(() => {
-    const fetchHeatmapData = async () => {
-      const response = await api.get<IApiResponse<IHeatmapDataPoint[]>>(
-        `/merchant/${id}/hourly-heatmap?startDate=${encodeURIComponent(
-          startDate
-        )}&endDate=${encodeURIComponent(endDate)}`
-      );
-
-      setHeatmapData(response.data.data);
-    };
-
-    fetchHeatmapData();
-  }, [id, startDate, endDate]);
+    fetchActiveMerchantsData();
+  }, [startDate, endDate, forecastEnabled, predictionModel, forecastHorizon]);
 
   useEffect(() => {
     const fetchSlowestTransactions = async () => {
       const response = await api.get<IApiResponse<ITransaction[]>>(
-        `/merchant/${id}/slowest-transactions?startDate=${encodeURIComponent(
+        `/admin/slowest-transactions?startDate=${encodeURIComponent(
           startDate
         )}&endDate=${encodeURIComponent(
           endDate
@@ -776,166 +567,12 @@ const Merchant = () => {
     };
 
     fetchSlowestTransactions();
-  }, [id, startDate, endDate, slowestTransactionsAmount]);
-
-  useEffect(() => {
-    const fetchAlerts = async () => {
-      const response = await api.get<IApiResponse<string[]>>(
-        `/merchant/${id}/alerts`
-      );
-
-      setAlerts(response.data.data);
-    };
-
-    fetchAlerts();
-  }, [id]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
-  if (!merchant) {
-    return <NotFound />;
-  }
+  }, [startDate, endDate, slowestTransactionsAmount]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto py-10">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => navigate("/")}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
-        >
-          ← Back
-        </button>
-
-        <div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="default" className="cursor-pointer">
-                Settings
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Settings</DialogTitle>
-                <DialogDescription>
-                  Update merchant settings below.
-                </DialogDescription>
-              </DialogHeader>
-
-              <Label htmlFor="merchantName">Merchant Name</Label>
-              <Input
-                id="merchantName"
-                type="text"
-                value={merchantName}
-                onChange={(e) => setMerchantName(e.target.value)}
-              />
-
-              <Label htmlFor="merchantWebhook" className="mt-4">
-                Webhook URL
-              </Label>
-              <Input
-                id="merchantWebhook"
-                type="text"
-                value={merchantWebhook}
-                onChange={(e) => setMerchantWebhook(e.target.value)}
-              />
-
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline" className="cursor-pointer">
-                    Cancel
-                  </Button>
-                </DialogClose>
-
-                <DialogClose asChild>
-                  <Button
-                    type="submit"
-                    className="cursor-pointer"
-                    onClick={() => {
-                      api
-                        .put(`/merchant/${id}`, {
-                          name: merchantName,
-                          webhookUrl: merchantWebhook,
-                        })
-                        .then(() => {
-                          toast.success("Settings updated");
-                          setMerchant((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  name: merchantName,
-                                  webhookUrl: merchantWebhook,
-                                }
-                              : prev
-                          );
-                        })
-                        .catch(() => {
-                          toast.error("Failed to update settings");
-                          setMerchantName(merchant?.name || "");
-                          setMerchantWebhook(merchant?.webhookUrl || "");
-                        });
-                    }}
-                  >
-                    Update Settings
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="destructive" className="ml-4 cursor-pointer">
-                Delete Merchant
-              </Button>
-            </DialogTrigger>
-
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  Are you absolutely sure to delete merchant {merchant.name}?
-                </DialogTitle>
-                <DialogDescription>
-                  This action cannot be undone. This will permanently delete
-                  merchant {merchant.name} and remove its data from our servers.
-                </DialogDescription>
-              </DialogHeader>
-
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline" className="cursor-pointer">
-                    Cancel
-                  </Button>
-                </DialogClose>
-
-                <DialogClose asChild>
-                  <Button
-                    variant="destructive"
-                    className="cursor-pointer"
-                    onClick={() =>
-                      api
-                        .delete(`/merchant/${id}`)
-                        .then(() => {
-                          toast.success("Merchant deleted");
-                          navigate("/");
-                        })
-                        .catch(() => {
-                          toast.error("Failed to delete merchant");
-                        })
-                    }
-                  >
-                    Delete Merchant
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       </div>
 
       {alerts.length > 0 && (
@@ -957,169 +594,7 @@ const Merchant = () => {
         </div>
       )}
 
-      <div className="bg-card rounded-lg border p-6 mb-6">
-        <h1 className="text-2xl font-bold mb-4">{merchant.name}</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">ID</p>
-              <p className="mt-1 text-sm">{merchant.id}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={async () => {
-                await navigator.clipboard.writeText(merchant.id);
-                setCopiedId(true);
-                setTimeout(() => setCopiedId(false), 2000);
-              }}
-            >
-              {copiedId ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Created At
-            </p>
-            <p className="mt-1 text-sm">
-              {new Date(merchant.createdAt).toLocaleString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Balance</p>
-            <p className="mt-1 text-sm">{merchant.balance} TON</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Withdrawable Balance
-            </p>
-            <p className="mt-1 text-sm">{merchant.withdrawableBalance} TON</p>
-          </div>
-          <div className="flex items-center justify-between md:col-span-2">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Webhook URL
-              </p>
-              <p className="mt-1 text-sm font-mono break-all">
-                {merchant.webhookUrl || "Not set"}
-              </p>
-            </div>
-            {merchant.webhookUrl && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(merchant.webhookUrl);
-                  setCopiedWebhook(true);
-                  setTimeout(() => setCopiedWebhook(false), 2000);
-                }}
-              >
-                {copiedWebhook ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-          </div>
-          <div className="md:col-span-2 flex gap-3 justify-end">
-            <Dialog>
-              <DialogTrigger asChild>
-                {merchant.withdrawableBalance <= 0 ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="default" className="cursor-pointer">
-                        Withdraw
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      No withdrawable balance available
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <Button variant="default" className="cursor-pointer">
-                    Withdraw
-                  </Button>
-                )}
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    Withdraw Funds ({merchant.withdrawableBalance} TON)
-                  </DialogTitle>
-                  <DialogDescription>
-                    Withdrawing will transfer your withdrawable balance (
-                    {merchant.withdrawableBalance} TON) to the wallet address
-                    you will provide here.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <Label htmlFor="walletAddress">Wallet Address</Label>
-                <Input
-                  id="walletAddress"
-                  type="text"
-                  value={withdrawAddress}
-                  onChange={(e) => setWithdrawAddress(e.target.value)}
-                />
-
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline" className="cursor-pointer">
-                      Cancel
-                    </Button>
-                  </DialogClose>
-
-                  <DialogClose asChild>
-                    <Button
-                      type="submit"
-                      className="cursor-pointer"
-                      onClick={() => {
-                        api
-                          .post(`/merchant/${id}/withdraw`, {
-                            address: withdrawAddress,
-                            amount: merchant.withdrawableBalance,
-                          })
-                          .then(() => {
-                            toast.success("Withdraw initiated");
-                            setWithdrawAddress("");
-                          })
-                          .catch(() => {
-                            toast.error("Failed to initiate withdraw");
-                          });
-                      }}
-                    >
-                      Withdraw
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() =>
-                api
-                  .post(`/merchant/${id}/collect-addresses`)
-                  .then(() => toast.success("Collect initiated"))
-                  .catch(() => toast.error("Failed to initiate collect"))
-              }
-            >
-              Collect TON to Main Address
-            </Button>
-          </div>
-        </div>
-      </div>
-
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold mb-4">Analytics</h2>
-
         <div className="flex flex-col gap-4 mb-6 ml-auto mr-auto w-fit items-center">
           <div className="flex items-center space-x-2">
             <Switch
@@ -1233,7 +708,6 @@ const Merchant = () => {
               forecastData={gmvData?.forecastData || []}
             />
           </div>
-
           <div>
             <h3 className="text-lg font-medium mb-3">Service Fee</h3>
 
@@ -1245,7 +719,6 @@ const Merchant = () => {
               forecastData={serviceFeeData?.forecastData}
             />
           </div>
-
           <div>
             <h3 className="text-lg font-medium mb-3">Conversion Rate</h3>
             <AnalyticsItem
@@ -1256,7 +729,6 @@ const Merchant = () => {
               forecastData={crData?.forecastData}
             />
           </div>
-
           <div>
             <h3 className="text-lg font-medium mb-3">
               Average Confirmation Time
@@ -1269,7 +741,6 @@ const Merchant = () => {
               forecastData={averageConfirmationTimeData?.forecastData}
             />
           </div>
-
           <div>
             <h3 className="text-lg font-medium mb-3">P95 Confirmation Time</h3>
             <AnalyticsItem
@@ -1280,7 +751,6 @@ const Merchant = () => {
               forecastData={p95ConfirmationTimeData?.forecastData}
             />
           </div>
-
           <div>
             <h3 className="text-lg font-medium mb-3">Direct Deposit Share</h3>
             <AnalyticsItem
@@ -1293,37 +763,14 @@ const Merchant = () => {
           </div>
 
           <div>
-            <h3 className="text-lg font-medium mb-3">Average Order Value</h3>
+            <h3 className="text-lg font-medium mb-3">Active Merchants</h3>
             <AnalyticsItem
-              kpi={aovData?.kpi || 0}
-              labels={aovData?.labels || []}
-              data={aovData?.data || []}
-              forecastLabels={aovData?.forecastLabels}
-              forecastData={aovData?.forecastData}
+              kpi={activeMerchantsData?.kpi || 0}
+              labels={activeMerchantsData?.labels || []}
+              data={activeMerchantsData?.data || []}
+              forecastLabels={activeMerchantsData?.forecastLabels}
+              forecastData={activeMerchantsData?.forecastData}
             />
-          </div>
-
-          <div>
-            <h3 className="text-lg font-medium mb-3">Repeat Customer Rate</h3>
-            <AnalyticsItem
-              kpi={repeatCustomerRateData?.kpi || 0}
-              labels={repeatCustomerRateData?.labels || []}
-              data={repeatCustomerRateData?.data || []}
-              forecastLabels={repeatCustomerRateData?.forecastLabels}
-              forecastData={repeatCustomerRateData?.forecastData}
-            />
-          </div>
-
-          <div className="text-lg font-medium mb-3">
-            <h3 className="text-lg font-medium mb-3">Transactions Funnel</h3>
-            <FunnelChart data={funnelData} />
-          </div>
-
-          <div className="text-lg font-medium mb-3">
-            <h3 className="text-lg font-medium mb-3">
-              Transactions Hourly Heatmap
-            </h3>
-            <Heatmap data={heatmapData} />
           </div>
         </div>
       </div>
@@ -1331,4 +778,4 @@ const Merchant = () => {
   );
 };
 
-export default Merchant;
+export default Dashboard;

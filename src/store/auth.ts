@@ -3,10 +3,11 @@ import { create } from "zustand";
 interface AuthStoreState {
   isLoading: boolean;
   isLoggedIn: boolean;
+  isAdmin: boolean;
 }
 
 interface AuthStoreActions {
-  setLoggedIn: (loggedIn: boolean) => void;
+  setLoggedIn: (loggedIn: boolean, isAdmin?: boolean) => void;
 }
 
 type AuthStore = AuthStoreState & AuthStoreActions;
@@ -14,7 +15,8 @@ type AuthStore = AuthStoreState & AuthStoreActions;
 const useAuth = create<AuthStore>((set) => ({
   isLoading: true,
   isLoggedIn: false,
-  setLoggedIn: (loggedIn: boolean) => {
+  isAdmin: false,
+  setLoggedIn: (loggedIn: boolean, isAdmin?: boolean) => {
     if (!loggedIn) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
@@ -23,6 +25,7 @@ const useAuth = create<AuthStore>((set) => ({
     set({
       isLoading: false,
       isLoggedIn: loggedIn,
+      isAdmin: isAdmin ?? false,
     });
   },
 }));

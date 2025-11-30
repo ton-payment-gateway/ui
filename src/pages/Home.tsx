@@ -1,7 +1,21 @@
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import type { IApiResponse, IMerchant } from "@/lib/types";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 interface IPagination {
@@ -20,6 +34,8 @@ const Home = () => {
     page: 1,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [merchantName, setMerchantName] = useState("");
+  const [merchantWebhook, setMerchantWebhook] = useState("");
 
   useEffect(() => {
     const fetchMerchants = async () => {
@@ -49,7 +65,74 @@ const Home = () => {
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">Your Merchants</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold mb-6">Your Merchants</h1>
+
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="default" className="cursor-pointer">
+              Add Merchant
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Settings</DialogTitle>
+              <DialogDescription>
+                Update merchant settings below.
+              </DialogDescription>
+            </DialogHeader>
+
+            <Label htmlFor="merchantName">Merchant Name</Label>
+            <Input
+              id="merchantName"
+              type="text"
+              value={merchantName}
+              onChange={(e) => setMerchantName(e.target.value)}
+            />
+
+            <Label htmlFor="merchantWebhook" className="mt-4">
+              Webhook URL
+            </Label>
+            <Input
+              id="merchantWebhook"
+              type="text"
+              value={merchantWebhook}
+              onChange={(e) => setMerchantWebhook(e.target.value)}
+            />
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" className="cursor-pointer">
+                  Cancel
+                </Button>
+              </DialogClose>
+
+              <DialogClose asChild>
+                <Button
+                  type="submit"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    api
+                      .post<IApiResponse<IMerchant>>(`/merchant`, {
+                        name: merchantName,
+                        webhookUrl: merchantWebhook || null,
+                      })
+                      .then((res) => {
+                        toast.success("Merchant created successfully");
+                        navigate(`/merchants/${res.data.data.id}`);
+                      })
+                      .catch(() => {
+                        toast.error("Failed to create merchant");
+                      });
+                  }}
+                >
+                  Create Merchant
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <div className="rounded-md border">
         <table className="w-full">
