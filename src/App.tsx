@@ -2,6 +2,7 @@ import "./App.css";
 
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
+import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import type { IApiResponse } from "./lib/types";
 import Layout from "./components/Layout";
@@ -15,7 +16,7 @@ import useAuth from "./store/auth";
 import { useEffect } from "react";
 
 function App() {
-  const { setLoggedIn, isLoading, isLoggedIn } = useAuth();
+  const { setLoggedIn, isLoading, isLoggedIn, isAdmin } = useAuth();
 
   useEffect(() => {
     const accessToken = localStorage.getItem("access_token");
@@ -24,10 +25,15 @@ function App() {
       return;
     }
 
+    const isAdminStorage = localStorage.getItem("is_admin");
+    const isAdmin = isAdminStorage === "true";
+
     api
-      .get<IApiResponse<{ id: string; username: string }>>("auth/session")
+      .get<IApiResponse<{ id: string; username: string }>>(
+        `${isAdmin ? "admin" : "auth"}/session`
+      )
       .then((response) => {
-        setLoggedIn(!!response?.data?.data?.id);
+        setLoggedIn(!!response?.data?.data?.id, isAdmin);
       })
       .catch(() => {
         setLoggedIn(false);
@@ -68,20 +74,22 @@ function App() {
           path="/"
           element={
             <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="/login">
-              <Layout>
-                <Home />
-              </Layout>
+              <Layout>{isAdmin ? <Dashboard /> : <Home />}</Layout>
             </ProtectedRoute>
           }
         />
         <Route
           path="merchants/:id"
           element={
-            <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="/login">
-              <Layout>
-                <Merchant />
-              </Layout>
-            </ProtectedRoute>
+            isAdmin ? (
+              <NotFound />
+            ) : (
+              <ProtectedRoute shouldRedirect={!isLoggedIn} redirectTo="/login">
+                <Layout>
+                  <Merchant />
+                </Layout>
+              </ProtectedRoute>
+            )
           }
         />
         <Route path="*" element={<NotFound />} />

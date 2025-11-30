@@ -30,9 +30,11 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refresh_token");
+        const isAdminStorage = localStorage.getItem("is_admin");
+        const isAdmin = isAdminStorage === "true";
         const response = await api.post<
           IApiResponse<{ accessToken: string; refreshToken: string }>
-        >("/auth/refresh", null, {
+        >(`/${isAdmin ? "admin" : "auth"}/refresh`, null, {
           headers: {
             Authorization: `Bearer ${refreshToken}`,
             _retry: true,
