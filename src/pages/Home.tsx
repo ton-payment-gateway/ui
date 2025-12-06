@@ -76,9 +76,9 @@ const Home = () => {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Settings</DialogTitle>
+              <DialogTitle>Create merchant</DialogTitle>
               <DialogDescription>
-                Update merchant settings below.
+                Add merchant settings below.
               </DialogDescription>
             </DialogHeader>
 
